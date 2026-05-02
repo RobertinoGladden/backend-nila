@@ -85,6 +85,13 @@ app.include_router(alerts.router)
 app.include_router(notifications.router)
 app.include_router(actuator.router)
 
+# New routers for user management, farming, feed, and ML
+from app.routers import auth, farming_cycle, feed, ml
+app.include_router(auth.router)
+app.include_router(farming_cycle.router)
+app.include_router(feed.router)
+app.include_router(ml.router)
+
 
 @app.get("/", tags=["Root"])
 def root():

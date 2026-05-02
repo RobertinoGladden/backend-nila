@@ -1,6 +1,234 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
-from datetime import datetime
+from pydantic import BaseModel, Field, field_validator, EmailStr
+from typing import Optional, List, Dict, Any
+from datetime import datetime, date, time
+from enum import Enum
+
+
+# ── ENUMS ──────────────────────────────────────────────────────
+
+class FarmingCycleStatus(str, Enum):
+    PLANNING = "planning"
+    ACTIVE = "active"
+    HARVESTING = "harvesting"
+    COMPLETED = "completed"
+
+
+class TransactionType(str, Enum):
+    INPUT = "input"
+    USAGE = "usage"
+
+
+# ── USER MANAGEMENT SCHEMAS ────────────────────────────────────
+
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8, description="Minimum 8 characters")
+    full_name: str
+    phone_number: Optional[str] = None
+    greenhouse_location: Optional[str] = None
+    address: Optional[str] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "email": "farmer@example.com",
+                "password": "securepass123",
+                "full_name": "John Doe",
+                "phone_number": "+628123456789",
+                "greenhouse_location": "Jakarta",
+                "address": "Jl. Merdeka No. 1"
+            }
+        }
+    }
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    phone_number: Optional[str] = None
+    greenhouse_location: Optional[str] = None
+    address: Optional[str] = None
+    profile_photo_url: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    greenhouse_location: Optional[str] = None
+    address: Optional[str] = None
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+
+
+# ── FARMING CYCLE SCHEMAS ──────────────────────────────────────
+
+class FarmingCycleCreate(BaseModel):
+    cycle_name: Optional[str] = None
+    seeding_date: date
+
+
+class FarmingCycleResponse(BaseModel):
+    id: int
+    user_id: int
+    cycle_name: Optional[str]
+    seeding_date: date
+    estimated_harvest_date: Optional[date]
+    actual_harvest_date: Optional[date]
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FarmingCycleUpdate(BaseModel):
+    cycle_name: Optional[str] = None
+    status: Optional[FarmingCycleStatus] = None
+    actual_harvest_date: Optional[date] = None
+
+
+# ── FEED MANAGEMENT SCHEMAS ────────────────────────────────────
+
+class FeedStockCreate(BaseModel):
+    farming_cycle_id: Optional[int] = None
+    current_quantity: float
+    unit: str = "kg"
+    min_threshold: Optional[float] = None
+
+
+class FeedStockResponse(BaseModel):
+    id: int
+    user_id: int
+    farming_cycle_id: Optional[int]
+    current_quantity: float
+    unit: str
+    min_threshold: Optional[float]
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FeedTransactionCreate(BaseModel):
+    transaction_type: TransactionType
+    quantity: float = Field(..., gt=0)
+    notes: Optional[str] = None
+
+
+class FeedTransactionResponse(BaseModel):
+    id: int
+    feed_stock_id: int
+    transaction_type: str
+    quantity: float
+    notes: Optional[str]
+    previous_quantity: Optional[float]
+    new_quantity: Optional[float]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── FEEDING SCHEDULE SCHEMAS ───────────────────────────────────
+
+class FeedingScheduleCreate(BaseModel):
+    scheduled_time: time
+    expected_quantity: float = Field(..., gt=0)
+    frequency: str = "daily"
+
+
+class FeedingScheduleResponse(BaseModel):
+    id: int
+    farming_cycle_id: int
+    scheduled_time: time
+    expected_quantity: float
+    frequency: str
+    status: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FeedingHistoryCreate(BaseModel):
+    feeding_schedule_id: Optional[int] = None
+    quantity_given: float = Field(..., gt=0)
+    administered_by: str = "system"
+    notes: Optional[str] = None
+
+
+class FeedingHistoryResponse(BaseModel):
+    id: int
+    feeding_schedule_id: Optional[int]
+    farming_cycle_id: int
+    actual_time: datetime
+    quantity_given: float
+    administered_by: str
+    notes: Optional[str]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── SENSOR SCHEMAS ─────────────────────────────────────────────
+
+class SensorCalibrationCreate(BaseModel):
+    farming_cycle_id: Optional[int] = None
+    sensor_type: str
+    calibration_value: float
+    reference_value: float
+    notes: Optional[str] = None
+
+
+class SensorCalibrationResponse(BaseModel):
+    id: int
+    farming_cycle_id: Optional[int]
+    sensor_type: str
+    calibration_date: datetime
+    calibration_value: float
+    reference_value: float
+    status: str
+    notes: Optional[str]
+
+    model_config = {"from_attributes": True}
+
+
+# ── ML SCHEMAS ─────────────────────────────────────────────────
+
+class HarvestPredictionResponse(BaseModel):
+    id: int
+    farming_cycle_id: int
+    predicted_harvest_date: date
+    confidence_score: Optional[float]
+    ml_model_id: Optional[int]
+    features_used: Optional[Dict[str, Any]]
+    prediction_date: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FeedingRecommendationResponse(BaseModel):
+    id: int
+    farming_cycle_id: int
+    recommended_quantity: float
+    recommended_time: Optional[time]
+    reasoning: Optional[str]
+    confidence_score: Optional[float]
+    ml_model_id: Optional[int]
+    features_used: Optional[Dict[str, Any]]
+    recommendation_date: datetime
+
+    model_config = {"from_attributes": True}
 
 
 # ── SENSOR DATA ───────────────────────────────────────────────
