@@ -12,9 +12,29 @@ def init_db():
         Base.metadata.create_all(bind=engine)
         print("✅ Database tables created successfully!")
         
-        # Verify tables exist
+        # Apply user management schema
         db = SessionLocal()
         try:
+            # Add new columns to users table
+            print("\n🔄 Applying User Management Schema...")
+            
+            # Check if columns exist before adding
+            db.execute(text("""
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'farmer';
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP NULL;
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS is_email_verified BOOLEAN DEFAULT FALSE;
+            """))
+            
+            # Create indexes
+            db.execute(text("CREATE INDEX IF NOT EXISTS idx_user_role ON users(role);"))
+            db.execute(text("CREATE INDEX IF NOT EXISTS idx_user_status ON users(status);"))
+            db.execute(text("CREATE INDEX IF NOT EXISTS idx_user_email_verified ON users(is_email_verified);"))
+            
+            db.commit()
+            print("✅ User Management Schema applied!")
+            
+            # Verify tables exist
             result = db.execute(text("""
                 SELECT table_name 
                 FROM information_schema.tables 
